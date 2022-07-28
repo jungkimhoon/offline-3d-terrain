@@ -18,12 +18,16 @@
 
 
 # Cesium-Terrain-Builder
+```console
 docker run -it --name ctb -v /mnt/d/junghoonkim/data/docker/terrain:/data tumgis/ctb-quantized-mesh
 
 mkdir -p terrain
 
 ctb-tile -f Mesh -C -N -o terrain korea.tif (로컬, 388MB기준 약 20분)
 ctb-tile -f Mesh -C -N -l -o terrain korea.tif
+```
 
 # Cesium-Terrain-Server
+```console
 docker run -p 8000:8000 -v /mnt/d/junghoonkim/data/docker/tilesets/terrain:/data/tilesets/terrain geodata/cesium-terrain-server
+```
