@@ -55,7 +55,9 @@ scene.terrainProvider = new Cesium.CesiumTerrainProvider({
     url : `http://127.0.0.1:11800/tilesets/tiles`,
 });
 ```
-request 결과와 ui 화면
+# 결과
+![image](https://user-images.githubusercontent.com/59942147/182511367-31e9ec13-661d-4bd2-8ae1-d79543a48671.png)
+
 
 # 참고
 ## DEM.tif
