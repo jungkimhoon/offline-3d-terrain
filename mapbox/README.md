@@ -204,28 +204,33 @@ rio rgbify -b -10000 -i 0.1 DEM_RESETTING.tif DEM_RGB.tif
 얻어진 xyz타일은 서버를 만들어서 서비스 테스트를 진행함. (따로 Server를 지원해주는 자원은 없어보인다.)
 ## Server
 ``` java
-  @GetMapping("/terrain/{z}/{x}/{y}")
-	public ResponseEntity<Object> getMapboxTerrain(@PathVariable("z") String z,
-												   @PathVariable("x") String x,
-												   @PathVariable("y") String y) throws IOException {		
-		String path = Paths.get(filePath, String.format("%s/%s/%s.png",z,x,y)).toAbsolutePath().toString();
+   /**
+     * Get Mapbox Terrain
+     *
+     * @param z
+     * @param x
+     * @param y
+     * @return ResponseEntity<Resource> terrain.png
+     * @throws IOException
+     */
+    @GetMapping("/mapbox/terrain/{z}/{x}/{y}")
+    public ResponseEntity<Resource> getMapboxTerrain(@PathVariable("z") final String z,
+                                                   @PathVariable("x") final String x,
+                                                   @PathVariable("y") final String y) throws IOException {
+        
+        final Path filePath = Paths.get(mapboxTerrainPath, String.format("%s/%s/%s.png", z, x, y)).toAbsolutePath();
+        final String fileName = filePath.getFileName().toString();
+        final HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.IMAGE_PNG);
+        headers.setContentDisposition(ContentDisposition.builder("attachment")
+                                                        .filename(fileName)
+                                                        .build());
 
-		try {
-			Path filePath = Paths.get(path);
-			Resource resource = new InputStreamResource(Files.newInputStream(filePath));
+        return ResponseEntity.ok()
+                             .headers(headers)
+                             .body(new InputStreamResource(Files.newInputStream(filePath)));
+    }
 
-			File file = new File(path);
-
-			HttpHeaders headers = new HttpHeaders();
-			headers.setContentType(MediaType.IMAGE_PNG);
-      headers.setContentDisposition(ContentDisposition.builder("attachment")
-                                                      .filename(file.getName()).build()));
-
-			return new ResponseEntity<Object>(resource, headers, HttpStatus.OK);
-		} catch(Exception e) {
-			return new ResponseEntity<Object>(null, HttpStatus.CONFLICT);
-		}
-	}
 ```
 
 ## Client
