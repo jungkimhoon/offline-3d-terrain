@@ -2,7 +2,7 @@
 # 절차
 1. Get DEM.tif file (Cesium에 사용될 quantized-mesh terrain 데이터를 만들기 위해 해당 파일이 필요하다.)
 2. Cesium-Terrain-Builder로 .tif -> .terrain 변환
-3. Cesium-Terrain-Server로 .terrain 서비스
+3. Terrain Service
 4. Cesium에서 사용
 
 # Open DEM(Digital Elevation Model) 사이트
@@ -38,8 +38,67 @@ $ ctb-tile -f Mesh -C -N -l -o terrain korea.tif
 ```
 
 
-# Cesium-Terrain-Server
- 변환된 terrain 파일을 적절한 경로에 위치시키고 볼륨을 연결하여 run한다.
+# Terrain Service (2가지 방법)
+## 1. 자체 서비스
+변환된 terrain 파일을 자체 서버에서 Service 한다.
+``` java
+ /**
+    * Get Cesium layer.json
+    * Terrain을 얻기 전에 메타데이터를 얻어야한다.
+    *
+    * @param layerJson
+    * @return ResponseEntity<Resource> (layer.json)
+    * @throws IOException
+    */
+  @GetMapping("/cesium/terrain/{layerJson}")
+  public ResponseEntity<Resource> getCesiumLayerJson(@PathVariable("layerJson") final String layerJson) throws IOException {
+
+      final Path filePath = Paths.get(cesiumTerrainPath, String.format("%s", layerJson)).toAbsolutePath();
+      final String fileName = filePath.getFileName().toString();
+      final HttpHeaders headers = new HttpHeaders();
+      headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+      headers.setContentDisposition(ContentDisposition.builder("attachment")
+                                                      .filename(fileName)
+                                                      .build());
+
+      return ResponseEntity.ok()
+                            .headers(headers)
+                            .body(new InputStreamResource(Files.newInputStream(filePath)));
+  }
+
+  /**
+    * Get Cesium Terrain
+    *
+    * @param z
+    * @param x
+    * @param y
+    * @return ResponseEntity<Resource> (.terrain file)
+    * @throws IOException
+    */
+  @GetMapping("/cesium/terrain/{z}/{x}/{y}")
+  public ResponseEntity<Resource> getCesiumTerrain(@PathVariable("z") final String z,
+                                                    @PathVariable("x") final String x,
+                                                    @PathVariable("y") final String y) throws IOException {
+
+      final Path filePath = Paths.get(cesiumTerrainPath, String.format("%s/%s/%s", z, x, y)).toAbsolutePath();
+      final String fileName = filePath.getFileName().toString();
+      final HttpHeaders headers = new HttpHeaders();
+      headers.set("Content-Encoding", "gzip"); // cesium은 gzip 형식으로 내줘야한다.
+      headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+      headers.setContentLength(new File(filePath.toString()).length());
+      headers.setContentDisposition(ContentDisposition.builder("attachment")
+                                                      .filename(fileName)
+                                                      .build());
+
+      return ResponseEntity.ok()
+                            .headers(headers)
+                            .body(new InputStreamResource(Files.newInputStream(filePath)));
+  }
+```
+
+## 2. Cesium-Terrain-Server 사용
+변환된 terrain 파일을 Docker 컨테이너를 통해 Service한다.
+
 ``` console
 $ docker run -p 11800:8000 -v \ /home/inno/3d_map_offline_volume/data/korea/tilesets/terrain:/data/tilesets/terrain geodata/cesium-terrain-server
 ```
@@ -47,17 +106,17 @@ $ docker run -p 11800:8000 -v \ /home/inno/3d_map_offline_volume/data/korea/tile
 http://127.0.0.1:11800/ --- was open 확인가능  
 http://127.0.0.1:11800/tilesets/tiles/9/873/362.terrain?v=1.1.0  --- terrain 확인가능
 
-
-# Cesium에서 사용
-아래처럼 Cesium-Terrain-Server에 terrain tile을 요청하여 동작한다.
+# Client
+Server에 terrain tile을 요청하여 Terrain을 랜더링한다.
 ``` javascript
-scene.terrainProvider = new Cesium.CesiumTerrainProvider({           
-    url : `http://127.0.0.1:11800/tilesets/tiles`,
+scene.terrainProvider = new Cesium.CesiumTerrainProvider({        
+  // ${SERVER_URL}/api/offline/cesium/terrain/{z}/{x}/{y} 형태로 호출됨
+   url : `${SERVER_URL}/api/offline/cesium/terrain/`, 
 });
 ```
-# 결과
-![image](https://user-images.githubusercontent.com/59942147/182511367-31e9ec13-661d-4bd2-8ae1-d79543a48671.png)
 
+request 결과와 ui 화면
+![image](https://user-images.githubusercontent.com/59942147/182511367-31e9ec13-661d-4bd2-8ae1-d79543a48671.png)
 
 # 참고
 ## DEM.tif
